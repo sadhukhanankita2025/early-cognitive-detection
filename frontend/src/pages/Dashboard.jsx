@@ -40,47 +40,36 @@ const Dashboard = () => {
   };
 
   const downloadReport = async () => {
-    if (!result) return;
-    const selectedFile = file;
     try {
-      const response = await fetch(`${API_BASE}/download-report`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          score: result.score,
-          prediction: result.prediction,
-          filename: selectedFile?.name || "audio.wav",
-        }),
-      });
-
-      // DEBUG
-      console.log("Response Status:", response.status);
+      const response = await fetch(
+        "http://127.0.0.1:5000/download-report",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            score: result.score,
+            filename: file.name,
+          }),
+        }
+      );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(errorText);
-        throw new Error("Server failed");
+        throw new Error("Failed to download PDF");
       }
 
-      // Convert to blob
       const blob = await response.blob();
-
-      // Create download link
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "NeuroAI_Report.pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      // Cleanup
-      window.URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "NeuroAI_Report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
     } catch (error) {
-      console.error("PDF Download Error:", error);
+      console.error(error);
       alert("Failed to download PDF");
     }
   };

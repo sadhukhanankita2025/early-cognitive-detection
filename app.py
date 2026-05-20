@@ -12,17 +12,25 @@ import numpy as np
 import tensorflow as tf
 import keras
 
-from flask import Flask, request, jsonify, send_file, make_response
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    send_file,
+    make_response
+)
+
 from flask_cors import CORS
+
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import Attention, InputLayer, Dense
+
 from fpdf import FPDF
 
 # =========================================================
 # FIX KERAS / TENSORFLOW VERSION COMPATIBILITY
 # =========================================================
 
-# Remove unsupported Dense config fields
 original_dense_init = Dense.__init__
 
 def fixed_dense_init(self, *args, quantization_config=None, **kwargs):
@@ -39,9 +47,9 @@ except:
 original_dense_from_config = Dense.from_config
 
 def fixed_dense_from_config(cls, config):
+
     config = dict(config)
 
-    # Remove unsupported config
     config.pop("quantization_config", None)
 
     if hasattr(original_dense_from_config, "__func__"):
@@ -52,10 +60,11 @@ def fixed_dense_from_config(cls, config):
 Dense.from_config = classmethod(fixed_dense_from_config)
 
 try:
-    keras.layers.Dense.from_config = classmethod(fixed_dense_from_config)
+    keras.layers.Dense.from_config = classmethod(
+        fixed_dense_from_config
+    )
 except:
     pass
-
 
 # =========================================================
 # FLASK APP
@@ -67,7 +76,7 @@ app = Flask(
     static_url_path='/'
 )
 
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 # =========================================================
 # FRONTEND SERVING
@@ -75,10 +84,14 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/')
 def index():
-    dist_path = os.path.join(app.static_folder, 'index.html')
 
-    if os.path.exists(dist_path):
-        return send_file(dist_path)
+    index_path = os.path.join(
+        app.static_folder,
+        'index.html'
+    )
+
+    if os.path.exists(index_path):
+        return send_file(index_path)
 
     return "Frontend build not found", 404
 
@@ -86,18 +99,20 @@ def index():
 @app.errorhandler(404)
 def not_found(e):
 
-    dist_path = os.path.join(app.static_folder, 'index.html')
+    index_path = os.path.join(
+        app.static_folder,
+        'index.html'
+    )
 
     if request.path.startswith('/api'):
         return jsonify({
             "error": "API route not found"
         }), 404
 
-    if os.path.exists(dist_path):
-        return send_file(dist_path)
+    if os.path.exists(index_path):
+        return send_file(index_path)
 
     return "Not Found", 404
-
 
 # =========================================================
 # HEALTH CHECK
@@ -105,14 +120,14 @@ def not_found(e):
 
 @app.route('/health', methods=['GET'])
 def health():
+
     return jsonify({
         "status": "healthy",
         "model_loaded": model is not None
     })
 
-
 # =========================================================
-# KERAS COMPATIBILITY CLASSES
+# CUSTOM KERAS CLASSES
 # =========================================================
 
 class FixedAttention(Attention):
@@ -134,7 +149,9 @@ class FixedInputLayer(InputLayer):
     def from_config(cls, config):
 
         if "batch_shape" in config:
-            config["batch_input_shape"] = config.pop("batch_shape")
+            config["batch_input_shape"] = config.pop(
+                "batch_shape"
+            )
 
         config.pop("optional", None)
 
@@ -150,7 +167,6 @@ class FixedDense(Dense):
 
         return cls(**config)
 
-
 # =========================================================
 # LOAD MODEL
 # =========================================================
@@ -159,14 +175,13 @@ MODEL_PATH = "advanced_neuroai_model.h5"
 
 model = None
 
-
 def get_model():
 
     global model
 
     if model is None:
 
-        print(f"\n--- Loading Model: {MODEL_PATH} ---")
+        print("\n--- Loading Model ---")
 
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(
@@ -187,25 +202,22 @@ def get_model():
 
     return model
 
-
 # =========================================================
 # FEATURE EXTRACTION
 # =========================================================
 
 def extract_features(audio_path):
 
-    print("Loading audio...")
+    print("Loading Audio...")
 
-    # Safer audio loading
     y, sr = librosa.load(
         audio_path,
         sr=22050,
         mono=True
     )
 
-    print(f"Audio Length: {len(y)}")
+    print(f"Audio Samples: {len(y)}")
 
-    # Generate MFCC
     mfccs = librosa.feature.mfcc(
         y=y,
         sr=sr,
@@ -214,13 +226,14 @@ def extract_features(audio_path):
 
     mfccs = mfccs.T
 
-    # Pad / Trim
     max_time = 200
 
     if len(mfccs) > max_time:
+
         mfccs = mfccs[:max_time, :]
 
     else:
+
         padding = max_time - len(mfccs)
 
         mfccs = np.pad(
@@ -231,23 +244,22 @@ def extract_features(audio_path):
 
     return mfccs
 
-
 # =========================================================
-# PREDICT ENDPOINT
+# PREDICT ROUTE
 # =========================================================
 
 @app.route('/predict', methods=['POST'])
 def predict():
 
-    print("\n--- Incoming Prediction Request ---")
+    print("\n--- Prediction Request ---")
 
     temp_audio_path = None
 
     try:
 
-        # -------------------------
+        # =====================================================
         # CHECK FILE
-        # -------------------------
+        # =====================================================
 
         if 'file' not in request.files:
 
@@ -260,14 +272,14 @@ def predict():
         if file.filename == '':
 
             return jsonify({
-                "error": "No file selected"
+                "error": "No selected file"
             }), 400
 
         print(f"Received File: {file.filename}")
 
-        # -------------------------
-        # CHECK EXTENSION
-        # -------------------------
+        # =====================================================
+        # VALIDATE EXTENSION
+        # =====================================================
 
         allowed_extensions = [
             'wav',
@@ -284,9 +296,9 @@ def predict():
                 "error": f"Unsupported file type: {ext}"
             }), 400
 
-        # -------------------------
+        # =====================================================
         # SAVE TEMP FILE
-        # -------------------------
+        # =====================================================
 
         with tempfile.NamedTemporaryFile(
             delete=False,
@@ -297,33 +309,30 @@ def predict():
 
             temp_audio_path = tmp_file.name
 
-        print(f"Temp File: {temp_audio_path}")
+        print(f"Temp Audio: {temp_audio_path}")
 
-        # -------------------------
+        # =====================================================
         # EXTRACT FEATURES
-        # -------------------------
-
-        print("Extracting Features...")
+        # =====================================================
 
         features = extract_features(temp_audio_path)
 
-        features = np.expand_dims(features, axis=0)
+        features = np.expand_dims(
+            features,
+            axis=0
+        )
 
         print(f"Feature Shape: {features.shape}")
 
-        # -------------------------
+        # =====================================================
         # LOAD MODEL
-        # -------------------------
-
-        print("Loading Model...")
+        # =====================================================
 
         m = get_model()
 
-        # -------------------------
-        # PREDICT
-        # -------------------------
-
-        print("Running Prediction...")
+        # =====================================================
+        # PREDICTION
+        # =====================================================
 
         prediction = m.predict(
             features,
@@ -358,29 +367,31 @@ def predict():
 
         try:
 
-            if temp_audio_path and os.path.exists(temp_audio_path):
+            if temp_audio_path and os.path.exists(
+                temp_audio_path
+            ):
 
                 os.remove(temp_audio_path)
 
-                print("Temp File Removed")
+                print("Temporary File Removed")
 
         except:
             pass
 
-
 # =========================================================
-# DOWNLOAD REPORT
+# DOWNLOAD PDF REPORT
 # =========================================================
 
 @app.route('/download-report', methods=['POST'])
 def download_report():
 
+    temp_graph_path = None
+
     try:
 
-        data = request.json
+        data = request.get_json(force=True) or {}
 
-        score = data.get('score', 0)
-
+        score = float(data.get('score', 0))
         filename = data.get(
             'filename',
             'Patient_Audio'
@@ -392,31 +403,58 @@ def download_report():
 
         pdf = FPDF()
 
+        pdf.set_auto_page_break(
+            auto=True,
+            margin=15
+        )
+
         pdf.add_page()
 
-        # -------------------------
+        line_width = (
+            pdf.w -
+            pdf.l_margin -
+            pdf.r_margin
+        )
+
+        # =====================================================
         # HEADER
-        # -------------------------
+        # =====================================================
 
-        pdf.set_font("Helvetica", "B", 24)
+        pdf.set_font(
+            "Helvetica",
+            "B",
+            24
+        )
 
-        pdf.set_text_color(139, 92, 246)
+        pdf.set_text_color(
+            139,
+            92,
+            246
+        )
 
         pdf.cell(
-            200,
+            line_width,
             20,
             txt="NeuroAI Clinical Report",
             ln=True,
             align='C'
         )
 
-        pdf.set_font("Helvetica", "", 10)
+        pdf.set_font(
+            "Helvetica",
+            "",
+            10
+        )
 
-        pdf.set_text_color(100, 100, 100)
+        pdf.set_text_color(
+            100,
+            100,
+            100
+        )
 
         pdf.cell(
-            200,
-            10,
+            line_width,
+            8,
             txt=f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             ln=True,
             align='C'
@@ -424,73 +462,108 @@ def download_report():
 
         pdf.ln(10)
 
-        # -------------------------
-        # DETAILS
-        # -------------------------
+        # =====================================================
+        # AUDIO DETAILS
+        # =====================================================
 
-        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_font(
+            "Helvetica",
+            "B",
+            14
+        )
 
-        pdf.set_text_color(0, 0, 0)
+        pdf.set_text_color(
+            0,
+            0,
+            0
+        )
 
         pdf.cell(
-            200,
+            line_width,
             10,
             txt="Audio Analysis Details",
             ln=True
         )
 
-        pdf.set_font("Helvetica", "", 12)
+        pdf.set_font(
+            "Helvetica",
+            "",
+            12
+        )
 
-        pdf.cell(
-            200,
-            10,
-            txt=f"Filename: {filename}",
-            ln=True
+        pdf.multi_cell(
+            line_width,
+            8,
+            txt=f"Filename: {filename}"
         )
 
         pdf.ln(5)
 
-        # -------------------------
-        # RESULT
-        # -------------------------
+        # =====================================================
+        # RESULT SECTION
+        # =====================================================
 
-        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_font(
+            "Helvetica",
+            "B",
+            14
+        )
 
         pdf.cell(
-            200,
+            line_width,
             10,
             txt="AI Diagnostic Result",
             ln=True
         )
 
-        pdf.set_font("Helvetica", "B", 18)
-
         if score >= 0.5:
-
-            pdf.set_text_color(231, 76, 60)
 
             status = "RISK DETECTED"
 
-        else:
+            pdf.set_text_color(
+                231,
+                76,
+                60
+            )
 
-            pdf.set_text_color(46, 204, 113)
+        else:
 
             status = "HEALTHY PROFILE"
 
+            pdf.set_text_color(
+                46,
+                204,
+                113
+            )
+
+        pdf.set_font(
+            "Helvetica",
+            "B",
+            18
+        )
+
         pdf.cell(
-            200,
-            15,
+            line_width,
+            12,
             txt=status,
             ln=True
         )
 
-        pdf.set_font("Helvetica", "", 12)
+        pdf.set_font(
+            "Helvetica",
+            "",
+            12
+        )
 
-        pdf.set_text_color(0, 0, 0)
+        pdf.set_text_color(
+            0,
+            0,
+            0
+        )
 
         pdf.cell(
-            200,
-            10,
+            line_width,
+            8,
             txt=f"Confidence Score: {score * 100:.2f}%",
             ln=True
         )
@@ -498,10 +571,8 @@ def download_report():
         pdf.ln(10)
 
         # =====================================================
-        # GRAPH
+        # CREATE GRAPH
         # =====================================================
-
-        plt.figure(figsize=(6, 4))
 
         categories = ['Healthy', 'Risk']
 
@@ -511,6 +582,15 @@ def download_report():
         ]
 
         colors = ['green', 'red']
+
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix='.png'
+        ) as tmp_graph:
+
+            temp_graph_path = tmp_graph.name
+
+        plt.figure(figsize=(6, 4))
 
         plt.barh(
             categories,
@@ -522,42 +602,61 @@ def download_report():
 
         plt.xlabel("Probability (%)")
 
-        plt.title("AI Prediction Distribution")
-
-        graph_path = os.path.join(os.path.dirname(__file__), "temp_graph.png")
+        plt.title(
+            "AI Prediction Distribution"
+        )
 
         plt.tight_layout()
 
-        plt.savefig(graph_path)
+        plt.savefig(
+            temp_graph_path,
+            dpi=150,
+            bbox_inches='tight'
+        )
 
         plt.close()
 
-        pdf.image(
-            graph_path,
-            x=30,
-            w=150
-        )
+        if (
+            temp_graph_path and
+            os.path.exists(temp_graph_path)
+        ):
 
-        if os.path.exists(graph_path):
-            os.remove(graph_path)
+            pdf.image(
+                temp_graph_path,
+                x=25,
+                w=160
+            )
 
-        pdf.ln(20)
-        pdf.set_x(pdf.l_margin)
+        pdf.ln(10)
 
         # =====================================================
         # RECOMMENDATIONS
         # =====================================================
 
-        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_font(
+            "Helvetica",
+            "B",
+            14
+        )
+
+        pdf.set_text_color(
+            0,
+            0,
+            0
+        )
 
         pdf.cell(
-            200,
+            line_width,
             10,
             txt="Recommendations",
             ln=True
         )
 
-        pdf.set_font("Helvetica", "", 12)
+        pdf.set_font(
+            "Helvetica",
+            "",
+            12
+        )
 
         if score >= 0.5:
 
@@ -571,33 +670,37 @@ def download_report():
         else:
 
             recommendations = [
-                "Maintain healthy lifestyle.",
+                "Maintain a healthy lifestyle.",
                 "Continue regular exercise.",
                 "Routine health monitoring recommended."
             ]
 
-        line_width = getattr(pdf, 'epw', pdf.w - pdf.l_margin - pdf.r_margin)
         for rec in recommendations:
-            pdf.set_x(pdf.l_margin)
-            pdf.cell(
+
+            pdf.multi_cell(
                 line_width,
-                10,
-                txt=f"- {rec}",
-                ln=True
+                8,
+                txt=f"- {rec}"
             )
 
-        pdf.ln(15)
+        pdf.ln(5)
 
         # =====================================================
         # DISCLAIMER
         # =====================================================
 
-        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_font(
+            "Helvetica",
+            "I",
+            9
+        )
 
-        pdf.set_text_color(150, 150, 150)
+        pdf.set_text_color(
+            150,
+            150,
+            150
+        )
 
-        line_width = getattr(pdf, 'epw', pdf.w - pdf.l_margin - pdf.r_margin)
-        pdf.set_x(pdf.l_margin)
         pdf.multi_cell(
             line_width,
             5,
@@ -605,23 +708,32 @@ def download_report():
                 "Medical Disclaimer: "
                 "This report is AI-generated and "
                 "is NOT a medical diagnosis. "
-                "Consult a qualified healthcare professional."
+                "Please consult a qualified "
+                "healthcare professional."
             )
         )
 
         # =====================================================
-        # GENERATE PDF BYTES
+        # GENERATE PDF
         # =====================================================
 
-        pdf_output = pdf.output(dest='S')
-        pdf_bytes = pdf_output if isinstance(pdf_output, (bytes, bytearray)) else pdf_output.encode('latin-1')
+        pdf_bytes = bytes(
+            pdf.output(dest='S')
+        )
 
         print("PDF Generated Successfully")
 
-        response = make_response(pdf_bytes)
-        response.headers.set('Content-Type', 'application/pdf')
+        response = make_response(
+            pdf_bytes
+        )
+
         response.headers.set(
-            'Content-Disposition',
+            "Content-Type",
+            "application/pdf"
+        )
+
+        response.headers.set(
+            "Content-Disposition",
             'attachment; filename="NeuroAI_Report.pdf"'
         )
 
@@ -635,6 +747,21 @@ def download_report():
             "error": str(e)
         }), 500
 
+    finally:
+
+        try:
+
+            if (
+                temp_graph_path and
+                os.path.exists(temp_graph_path)
+            ):
+
+                os.remove(temp_graph_path)
+
+                print("Temporary Graph Removed")
+
+        except:
+            pass
 
 # =========================================================
 # MAIN
@@ -650,7 +777,9 @@ if __name__ == '__main__':
 
     except Exception as e:
 
-        print(f"WARNING: Model preload failed: {e}")
+        print(
+            f"WARNING: Model preload failed: {e}"
+        )
 
     app.run(
         host="0.0.0.0",
