@@ -4,7 +4,7 @@ import { Upload, FileAudio, CheckCircle, AlertTriangle, FileDown, RotateCcw, Bra
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 
-const API_BASE = window.location.port === '5173' ? 'http://localhost:5000' : '';
+const API_BASE = '';
 
 const Dashboard = () => {
   const [file, setFile] = useState(null);
@@ -39,23 +39,49 @@ const Dashboard = () => {
     }
   };
 
-  const downloadPDF = async () => {
+  const downloadReport = async () => {
     if (!result) return;
+    const selectedFile = file;
     try {
-      const response = await axios.post(`${API_BASE}/download-report`, {
-        score: result.score,
-        prediction: result.prediction,
-        filename: file.name
-      }, { responseType: 'blob' });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const response = await fetch(`${API_BASE}/download-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          score: result.score,
+          prediction: result.prediction,
+          filename: selectedFile?.name || "audio.wav",
+        }),
+      });
+
+      // DEBUG
+      console.log("Response Status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(errorText);
+        throw new Error("Server failed");
+      }
+
+      // Convert to blob
+      const blob = await response.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', 'NeuroAI_Report.pdf');
+      link.download = "NeuroAI_Report.pdf";
       document.body.appendChild(link);
       link.click();
-    } catch (err) {
-      alert("Failed to download PDF.");
+      link.remove();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("PDF Download Error:", error);
+      alert("Failed to download PDF");
     }
   };
 
@@ -75,7 +101,7 @@ const Dashboard = () => {
       {/* Error Message */}
       <AnimatePresence>
         {error && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -90,7 +116,7 @@ const Dashboard = () => {
 
       {/* Left Panel: Upload */}
       <div className="lg:col-span-4 space-y-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-8"
@@ -98,8 +124,8 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <Upload className="text-soft-lavender w-6 h-6" /> Upload Audio
           </h2>
-          
-          <div 
+
+          <div
             onClick={() => fileInputRef.current.click()}
             className={`border-2 border-dashed rounded-[20px] p-10 text-center cursor-pointer transition-all ${file ? 'border-mint-green/50 bg-mint-green/5' : 'border-white/10 hover:border-soft-lavender/50 hover:bg-white/5'}`}
           >
@@ -118,14 +144,14 @@ const Dashboard = () => {
             )}
           </div>
 
-          <button 
+          <button
             disabled={!file || analyzing}
             onClick={startAnalysis}
             className={`w-full mt-6 py-4 rounded-full font-bold transition-all shadow-xl ${!file || analyzing ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-soft-lavender hover:bg-soft-lavender/90 shadow-soft-lavender/30'}`}
           >
             {analyzing ? 'Processing Analysis...' : 'Start AI Prediction'}
           </button>
-          
+
           {file && !analyzing && (
             <button onClick={reset} className="w-full mt-4 py-2 text-sm text-white/40 hover:text-white flex items-center justify-center gap-2 transition-colors">
               <RotateCcw className="w-4 h-4" /> Reset
@@ -145,7 +171,7 @@ const Dashboard = () => {
       <div className="lg:col-span-8 space-y-6">
         <AnimatePresence mode="wait">
           {!result && !analyzing ? (
-            <motion.div 
+            <motion.div
               key="placeholder"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="glass-card h-full flex flex-col items-center justify-center text-center p-20 border-white/5"
@@ -157,7 +183,7 @@ const Dashboard = () => {
               <p className="max-w-xs text-white/30">Upload an audio recording on the left to begin the neurological assessment.</p>
             </motion.div>
           ) : analyzing ? (
-            <motion.div 
+            <motion.div
               key="loading"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="glass-card h-full flex flex-col items-center justify-center text-center p-20"
@@ -171,7 +197,7 @@ const Dashboard = () => {
               <p className="text-white/50">Processing acoustic features and comparing with clinical data...</p>
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="result"
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               className="space-y-6"
@@ -179,7 +205,7 @@ const Dashboard = () => {
               {/* Result Card */}
               <div className={`glass-card p-10 relative overflow-hidden ${result.score >= 0.5 ? 'border-red-500/30' : 'border-mint-green/30'}`}>
                 <div className={`absolute top-0 right-0 w-64 h-64 blur-[100px] -z-10 ${result.score >= 0.5 ? 'bg-red-500/10' : 'bg-mint-green/10'}`} />
-                
+
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                   <div>
                     <span className={`px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 inline-block ${result.score >= 0.5 ? 'bg-red-500/20 text-red-400' : 'bg-mint-green/20 text-mint-green'}`}>
@@ -189,9 +215,9 @@ const Dashboard = () => {
                       {result.score >= 0.5 ? 'Possible Cognitive Decline' : 'No Significant Decline'}
                     </h2>
                     <p className="text-white/60 mb-6">Prediction Score: {(result.score * 100).toFixed(2)}% Confidence</p>
-                    
-                    <button 
-                      onClick={downloadPDF}
+
+                    <button
+                      onClick={downloadReport}
                       className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all border border-white/10"
                     >
                       <FileDown className="w-5 h-5" /> Download Clinical PDF
@@ -203,7 +229,7 @@ const Dashboard = () => {
                       <BarChart data={chartData} layout="vertical">
                         <XAxis type="number" hide domain={[0, 100]} />
                         <YAxis dataKey="name" type="category" hide />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#071028', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                           itemStyle={{ color: '#fff' }}
                         />

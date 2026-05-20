@@ -1,0 +1,15 @@
+from fpdf import FPDF
+
+pdf = FPDF()
+pdf.add_page()
+print('w', pdf.w)
+print('h', pdf.h)
+print('l_margin', pdf.l_margin)
+print('r_margin', pdf.r_margin)
+print('t_margin', pdf.t_margin)
+print('b_margin', pdf.b_margin)
+print('epw', getattr(pdf, 'epw', None))
+print('x', pdf.get_x())
+print('y', pdf.get_y())
+print('current orientation', pdf.cur_orientation)
+print('line_width', getattr(pdf, 'epw', pdf.w - pdf.l_margin - pdf.r_margin))
