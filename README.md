@@ -108,7 +108,7 @@ NeuroAI Problem/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/Anjel-cmd/Neuro-AI-Detector.git
+git clone https://github.com/sadhukhanankita2025/Early-Cognitive-Decline-Detection-using-Machine-Learning.git
 cd Neuro-AI-Detector
 ```
 
