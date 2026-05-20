@@ -1,12 +1,43 @@
 # 🧠 NeuroAI — Early Cognitive Decline Detection via Voice
 
+![NeuroAI Landing Screenshot](frontend/src/assets/hero.png)
+![Brain Hologram](frontend/src/assets/brain_hologram.png)
+
 An AI-powered full-stack web application that detects early cognitive decline patterns from human speech using Deep Learning and NeuroAI techniques. Built with a **React + Vite** frontend and a **Flask** backend.
 
 > ⚠️ **Disclaimer:** This application is not a medical diagnostic tool. Predictions are AI-generated estimates and must not replace professional medical advice.
 
 ---
 
-## 🚀 Project Overview
+## � Application Screenshots
+
+### 🏠 Home Page
+
+The home page provides an attractive landing interface where users can upload medical images and access the pneumonia analysis system.
+
+![Home Page 1](image-2.png)
+![Home Page 2](image-1.png)
+![Home Page 3](image.png)
+
+---
+
+### 🔬 Analyzer Page
+
+The analyzer page allows users to upload chest X-ray images, run the AI model, and view detailed prediction results with confidence scores.
+
+![Analyzer Page 1](image-3.png)
+![Analyzer Page 2](image-4.png)
+![Analyzer Page 3](image-5.png)
+
+---
+
+## 📄 Beautiful PDF Report Download
+
+Download a polished, AI-generated PDF report summarizing the analysis, predictions, and confidence levels for easy sharing with healthcare providers.
+
+---
+
+## �🚀 Project Overview
 
 Early symptoms of cognitive decline and Alzheimer's disease often manifest in speech:
 
@@ -242,14 +273,6 @@ The **Dashboard** displays a bar chart comparing Positive vs Negative probabilit
 - 🔐 User authentication and result history
 
 ---
-
-## 👨‍💻 Author
-
-Developed for **NeuroAI & Healthcare AI Research**.  
-GitHub: [Anjel-cmd/Neuro-AI-Detector](https://github.com/Anjel-cmd/Neuro-AI-Detector)
-
----
-
 ## 📜 License
 
 This project is for **educational and research purposes only.**
