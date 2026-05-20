@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy-bg text-white font-inter selection:bg-soft-lavender/30;
+    overflow-x: hidden;
+  }
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] shadow-2xl;
+}
+
+.neural-glow {
+  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.4));
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-soft-lavender via-calm-blue to-mint-green;
+}
+
+.floating {
+  animation: floating 3s ease-in-out infinite;
+}
+
+@keyframes floating {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(7, 16, 40, 0) 70%);
+  border-radius: 50%;
+  z-index: -1;
+  filter: blur(80px);
+}
